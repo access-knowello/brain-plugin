@@ -1,10 +1,10 @@
 # Brain Sync — Obsidian Plugin
 
-Shared, git-backed sync for an organization's Obsidian vault. This plugin is the client half of Knowello's **Brain** product — see the [[products/brain]] vault docs for the full product story. Not published to the Obsidian community plugin store yet; this covers manual/dev installs only.
+Shared, git-backed sync for an organization's Obsidian vault. Not published to the Obsidian community plugin store yet; this covers manual/dev installs only.
 
-## Current phase: internal dogfood (Phase 1)
+## Current status
 
-No SSO yet, no provisioning service. You manually create a GitHub App installation token (or a fine-grained PAT) and paste it into plugin settings. See [[MVP Sketch]] for the phased build plan — this README documents Phase 1 install only, and will need a rewrite once Phase 2 SSO lands.
+No SSO yet — you manually create a GitHub App installation token (or a fine-grained PAT) and paste it into plugin settings.
 
 ## Requirements
 
@@ -20,8 +20,7 @@ For anyone other than the one person doing dev work on the plugin itself, instal
 
 This repo isn't pushed anywhere yet, so this has to happen once before anyone can BRAT-install it.
 
-1. **Create the GitHub repo.** Per Knowello's GitHub conventions (see the `github` reference note in the vault), `gh` CLI here is authenticated as Kyle's personal `groky` account, which can't create repos under `access-knowello` — create it in the browser instead, logged in as `access-knowello`, at `https://github.com/new` → name it e.g. `brain-plugin`.
-   - **Public vs. private is a real decision, not a default:** BRAT can install from a private repo, but only if *every teammate* first generates their own GitHub PAT and pastes it into BRAT's own settings — real friction, and works against "get the team syncing painlessly, fast." The plugin code itself has no secrets in it (`.secrets/` is gitignored and never committed), so making this specific repo **public** removes that friction entirely for a small internal beta tool. Recommended, but Kyle's call — flag it if you'd rather keep it private and eat the per-teammate PAT step.
+1. **Create the GitHub repo.** `gh` CLI here is authenticated as a personal account, which can't create repos under `access-knowello` — create it in the browser instead, logged in as `access-knowello`, at `https://github.com/new` → name it `brain-plugin` → **private**.
 
 2. **Push the existing local code:**
    ```bash
@@ -50,7 +49,7 @@ This repo isn't pushed anywhere yet, so this has to happen once before anyone ca
 
 1. Install **BRAT** itself the normal way: Obsidian Settings → Community plugins → Browse → search "BRAT" → install → enable.
 2. BRAT's settings → **Add Beta Plugin** → enter `access-knowello/brain-plugin` (just `owner/repo`, no URL) → BRAT fetches the latest release's `manifest.json`/`main.js` and installs Brain Sync like any other plugin.
-   - If the repo ended up private: BRAT settings has its own separate GitHub PAT field — each teammate needs to generate a PAT (classic, `repo` scope is simplest) from their own GitHub account and paste it there first, or the fetch will fail.
+   - This repo is **private**, so BRAT needs its own separate GitHub PAT first: generate one (classic, `repo` scope is simplest) from your own GitHub account and paste it into BRAT's settings, or the fetch will fail.
 3. From here, follow the "Enable it in Obsidian" → "Configure it" steps below as normal (still needs the vault-scoping step and a sync token — BRAT only solves *getting the plugin installed*, not the auth/token question).
 
 ### Shipping an update later
@@ -77,7 +76,7 @@ Bump `version` in `manifest.json`, rebuild, tag and push a new tag matching the 
 
 4. **Enable it in Obsidian:** Settings → Community plugins → trust/enable community plugins if prompted → toggle **Brain Sync** on.
 
-5. **Configure it:** open the Brain Sync settings tab, turn on **"Reveal connection details"** (off by default — this is the Phase 1 power-user escape hatch, not the intended end-user flow), and fill in:
+5. **Configure it:** open the Brain Sync settings tab, turn on **"Reveal connection details"** (off by default — a power-user escape hatch, not the intended end-user flow), and fill in:
    - **Remote URL** — `https://github.com/Knowello-Brain/<tenant-repo>.git`
    - **Token** — a GitHub App installation token or fine-grained PAT (see below)
    - **Branch** — `main`
@@ -92,7 +91,7 @@ Two options, both scoped to just the one tenant repo:
   ```bash
   node scripts/mint-installation-token.mjs --app-id <id> --key .secrets/knowello-brain-sync.pem --repo Knowello-Brain/<repo>
   ```
-  Fine for a one-off test; impractical for real day-to-day use since it needs re-minting hourly by hand until Phase 2's auto-refresh exists.
+  Fine for a one-off test; impractical for real day-to-day use since it needs re-minting hourly by hand.
 
 - **Fine-grained PAT** (recommended for ongoing dogfood use): create it yourself in GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens, scoped to only `Knowello-Brain/<repo>` with Contents read/write. Long-lived, no re-minting.
 
@@ -119,8 +118,6 @@ On first connect, this plugin scaffolds a standard vault layout (`index.md`, `_c
 
 ## What this plugin does *not* do (yet)
 
-- No SSO / sign-in — Phase 2 replaces the remote-URL-and-token fields with a Knowello session obtained via `registerObsidianProtocolHandler`.
-- No conflict-resolution UI — a raw git merge conflict is what you'll see if two people edit the same note offline at the same time. Phase 3 replaces this with a "here's both versions" picker.
-- No binary/attachment handling beyond whatever plain git does — `git-lfs` wiring is Phase 4.
-
-See `_claude/code/index.md` in the `products/brain` vault folder for the full repo layout and current build state.
+- No SSO / sign-in — the remote URL and token are entered manually in settings.
+- No conflict-resolution UI — a raw git merge conflict is what you'll see if two people edit the same note offline at the same time.
+- No binary/attachment handling beyond whatever plain git does.
