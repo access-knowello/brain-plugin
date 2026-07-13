@@ -1,0 +1,10 @@
+{
+	"id": "brain-sync",
+	"name": "Brain Sync",
+	"version": "0.0.1",
+	"minAppVersion": "1.5.0",
+	"description": "Shared, multi-tenant sync for your organization's Obsidian vault.",
+	"author": "Knowello",
+	"authorUrl": "https://knowello.com.au",
+	"isDesktopOnly": true
+}

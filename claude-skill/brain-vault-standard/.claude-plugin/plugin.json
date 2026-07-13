@@ -1,0 +1,8 @@
+{
+  "name": "brain-vault-standard",
+  "description": "Recognize a Brain-synced Obsidian vault, produce Project Notes and Code Map documents in Brain's standard format, and (on request) register a vault's location in the user's global CLAUDE.md.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Knowello"
+  }
+}

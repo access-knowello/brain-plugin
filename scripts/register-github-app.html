@@ -1,0 +1,54 @@
+<!doctype html>
+<html>
+<head><title>Register Knowello Brain Sync GitHub App</title></head>
+<body>
+<p>Submitting GitHub App manifest to the Knowello-Brain org...</p>
+<!--
+	Knowello-Brain (https://github.com/Knowello-Brain) is a real Organization
+	(confirmed via GET /orgs/Knowello-Brain -> "type": "Organization"), created
+	specifically to hold tenant brain repos, distinct from access-knowello
+	(a personal User account, used for Knowello's own client/product repos,
+	which can't have repos auto-created under it by a GitHub App). Whoever opens
+	this file needs to be logged in as any owner/admin of Knowello-Brain — does
+	not need to be the org "itself" the way a personal-account-owned app would.
+-->
+<form id="f" action="https://github.com/organizations/Knowello-Brain/settings/apps/new" method="post">
+	<input type="hidden" name="manifest" id="manifest">
+</form>
+<script>
+	// Phase 0 registration manifest — see MVP Sketch / Provisioning Service Sketch
+	// in the "brain" product vault for why these permissions were chosen:
+	// - contents:write   -> git smart-HTTP clone/pull/push via installation token
+	// - administration:write -> lets the app create repos in the org later
+	//   (Phase 2's provisioning service), and manage settings on repos it has access to
+	// - metadata:read    -> mandatory baseline, included explicitly for clarity
+	document.getElementById('manifest').value = JSON.stringify({
+		name: "Knowello Brain Sync",
+		url: "https://knowello.com.au",
+		// Required by GitHub's manifest flow despite docs implying it's optional.
+		// No callback server exists yet, so this just points at the domain root —
+		// after creation GitHub redirects here with ?code=<temporary code> appended.
+		// Grab that code from the address bar (the page itself doesn't need to do
+		// anything with it) and hand it to whoever is exchanging it for credentials.
+		redirect_url: "https://knowello.com.au/",
+		public: false,
+		default_permissions: {
+			contents: "write",
+			administration: "write",
+			metadata: "read"
+		},
+		default_events: [],
+		// Explicit rather than omitted: GitHub's confirmation screen defaults the
+		// webhook "Active" toggle to checked (and then requires a URL) unless the
+		// manifest says otherwise. No webhook is needed for Phase 0 (no server to
+		// receive it yet) — hook_attributes.url is still required syntactically
+		// even though active:false means GitHub will never actually deliver to it.
+		hook_attributes: {
+			url: "https://knowello.com.au",
+			active: false
+		}
+	});
+	document.getElementById('f').submit();
+</script>
+</body>
+</html>
