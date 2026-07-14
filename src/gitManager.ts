@@ -86,10 +86,88 @@ Each project living in this vault gets its own subfolder with the same pattern, 
 export class GitManager {
 	private git: SimpleGit;
 	private basePath: string;
+	private binaryPath = "git";
 
 	constructor(adapter: FileSystemAdapter) {
 		this.basePath = adapter.getBasePath();
 		this.git = simpleGit({ baseDir: this.basePath });
+	}
+
+	/** Whatever binary path resolveGitBinary() last settled on — for display in settings, not used for git calls. */
+	getBinaryPath(): string {
+		return this.binaryPath;
+	}
+
+	/**
+	 * GUI apps (Obsidian included) are often launched with a minimal PATH —
+	 * on macOS from launchd, on Windows from the Start Menu/shortcut — that
+	 * doesn't match a full interactive shell's PATH. So a plain `spawn("git",
+	 * ...)` that works fine in Terminal/PowerShell can still ENOENT from
+	 * inside the app. Resolve a working git binary once, preferring (in
+	 * order): an explicit user-set override, the plain "git" on PATH, then a
+	 * short list of common per-OS install locations. Safe to call again if
+	 * the override setting changes.
+	 */
+	async resolveGitBinary(explicitPath?: string): Promise<void> {
+		const trimmed = explicitPath?.trim();
+		if (trimmed) {
+			this.setBinary(trimmed);
+			return;
+		}
+
+		if (await this.binaryWorks("git")) {
+			this.setBinary("git");
+			return;
+		}
+
+		for (const candidate of this.candidatePaths()) {
+			const exists = await fs
+				.access(candidate)
+				.then(() => true)
+				.catch(() => false);
+			if (!exists) continue;
+			if (await this.binaryWorks(candidate)) {
+				this.setBinary(candidate);
+				return;
+			}
+		}
+
+		// Nothing worked — leave "git" as the binary so the eventual ENOENT
+		// surfaces normally; the caller (main.ts) turns that into a Notice
+		// pointing at the manual override setting.
+		this.setBinary("git");
+	}
+
+	private setBinary(binary: string): void {
+		this.binaryPath = binary;
+		this.git = simpleGit({ baseDir: this.basePath, binary });
+	}
+
+	private async binaryWorks(binary: string): Promise<boolean> {
+		try {
+			await simpleGit({ binary }).version();
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
+	private candidatePaths(): string[] {
+		switch (process.platform) {
+			case "win32": {
+				const programFiles = [process.env.ProgramFiles, process.env["ProgramFiles(x86)"]].filter(
+					(p): p is string => !!p
+				);
+				return programFiles.flatMap((base) => [
+					path.join(base, "Git", "cmd", "git.exe"),
+					path.join(base, "Git", "bin", "git.exe"),
+				]);
+			}
+			case "darwin":
+				return ["/usr/bin/git", "/opt/homebrew/bin/git", "/usr/local/bin/git"];
+			default:
+				return ["/usr/bin/git", "/usr/local/bin/git", "/snap/bin/git"];
+		}
 	}
 
 	private authArgs(token: string): string[] {

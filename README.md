@@ -83,6 +83,16 @@ Bump `version` in `manifest.json`, rebuild, tag and push a new tag matching the 
 
 6. **Sync:** click **Sync now**, or turn on **Auto-sync** and set an interval. Auto-sync polls on a timer (`setInterval`) — it is not triggered by file saves.
 
+## Troubleshooting: "couldn't find git" / `spawn git ENOENT`
+
+Obsidian (like most GUI apps) can launch with a minimal `PATH` that doesn't match what your Terminal/PowerShell sees — so git can work fine on the command line but still be invisible to the plugin. The plugin auto-detects git at startup (trying the plain `git` command, then a few common per-OS install locations), but if that still fails:
+
+1. Confirm git is actually installed: run `git --version` in Terminal (Mac/Linux) or PowerShell/Command Prompt (Windows). If it prompts to install something, do that first.
+2. Find the full path: `which git` (Mac/Linux) or `where.exe git` (Windows).
+3. Paste that full path into Brain Sync settings → **Troubleshooting → Git binary path**, then try **Sync now** again.
+
+Common Windows-specific cause: if Git for Windows was installed without the "Git from the command line" PATH option, or if only GitHub Desktop is installed (its bundled git isn't exposed system-wide), `git` won't resolve automatically — the manual path override above is the fix either way.
+
 ## Getting a token
 
 Two options, both scoped to just the one tenant repo:

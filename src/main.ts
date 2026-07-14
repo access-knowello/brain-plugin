@@ -20,6 +20,8 @@ interface BrainSyncSettings {
 	devModeRevealRemote: boolean;
 	lastSyncedAt: string | null;
 	scaffoldingDone: boolean;
+	/** Manual override if auto-detection can't find git (e.g. "spawn git ENOENT"). Empty = auto-detect. */
+	gitBinaryPath: string;
 }
 
 const DEFAULT_SETTINGS: BrainSyncSettings = {
@@ -31,6 +33,7 @@ const DEFAULT_SETTINGS: BrainSyncSettings = {
 	devModeRevealRemote: false,
 	lastSyncedAt: null,
 	scaffoldingDone: false,
+	gitBinaryPath: "",
 };
 
 export default class BrainSyncPlugin extends Plugin {
@@ -48,6 +51,7 @@ export default class BrainSyncPlugin extends Plugin {
 			return;
 		}
 		this.gitManager = new GitManager(adapter);
+		await this.gitManager.resolveGitBinary(this.settings.gitBinaryPath);
 
 		this.addSettingTab(new BrainSyncSettingTab(this.app, this));
 
@@ -108,7 +112,16 @@ export default class BrainSyncPlugin extends Plugin {
 		} catch (err) {
 			this.status = "error";
 			console.error("Brain Sync error", err);
-			new Notice(`Brain Sync failed: ${(err as Error).message}`);
+			const message = (err as Error).message ?? String(err);
+			if (message.includes("ENOENT") && message.includes("git")) {
+				new Notice(
+					"Brain Sync couldn't find git on this system. If git is installed, set its full path " +
+						"under Brain Sync settings → \"Git binary path\", then try again.",
+					10000
+				);
+			} else {
+				new Notice(`Brain Sync failed: ${message}`);
+			}
 		}
 	}
 
@@ -182,6 +195,26 @@ class BrainSyncSettingTab extends PluginSettingTab {
 							await this.plugin.saveSettings();
 							this.plugin.applyAutoSyncSchedule();
 						}
+					})
+			);
+
+		containerEl.createEl("h3", { text: "Troubleshooting" });
+		new Setting(containerEl)
+			.setName("Git binary path")
+			.setDesc(
+				`Leave blank to auto-detect (currently using: ${this.plugin.gitManager.getBinaryPath()}). ` +
+					'Set this if Sync now fails with "couldn\'t find git" — e.g. ' +
+					"C:\\Program Files\\Git\\cmd\\git.exe on Windows, or the output of `which git` in Terminal on Mac/Linux."
+			)
+			.addText((text) =>
+				text
+					.setPlaceholder("Auto-detect")
+					.setValue(s.gitBinaryPath)
+					.onChange(async (value) => {
+						s.gitBinaryPath = value.trim();
+						await this.plugin.saveSettings();
+						await this.plugin.gitManager.resolveGitBinary(s.gitBinaryPath);
+						this.display();
 					})
 			);
 
