@@ -278,7 +278,24 @@ export class GitManager {
 		// branches" the moment local and remote histories diverge — which
 		// commit-before-pull (see main.ts's syncNow()) makes the normal
 		// case, not an edge case.
-		await this.git.raw([...this.authArgs(creds.token), "pull", "--no-rebase", "origin", branch]);
+		//
+		// --allow-unrelated-histories: a local repo that's been through a
+		// partial/failed connect attempt (identity error, branch mismatch,
+		// etc. — all real cases we've hit) can end up with commits that
+		// share no ancestor with the remote, which a plain pull refuses
+		// with "refusing to merge unrelated histories". In Brain's model a
+		// vault's local and remote are always meant to be the same logical
+		// history — there's no legitimate case here where they're genuinely
+		// unrelated projects, so this guard only ever protects against
+		// exactly that stuck-state class of error, never a real mistake.
+		await this.git.raw([
+			...this.authArgs(creds.token),
+			"pull",
+			"--no-rebase",
+			"--allow-unrelated-histories",
+			"origin",
+			branch,
+		]);
 	}
 
 	async push(creds: RemoteCredentials, branch = "main"): Promise<void> {
