@@ -17,6 +17,18 @@ export type SyncStatus = "idle" | "syncing" | "error";
  * the source of truth; update both together if either drifts.
  */
 const SCAFFOLD_FILES: Record<string, string> = {
+	".gitignore": `.DS_Store
+# Per-machine Obsidian config (window layout, theme, enabled core plugins) —
+# every fresh install generates these locally before Brain Sync ever runs;
+# tracking them means every new teammate's first connect hits a merge
+# conflict on files that were never meant to be shared.
+.obsidian/workspace.json
+.obsidian/app.json
+.obsidian/appearance.json
+.obsidian/core-plugins.json
+.obsidian/community-plugins.json
+.obsidian/plugins/
+`,
 	"index.md": `# Welcome to your Brain
 
 This vault is synced via **Brain** — your team's shared, version-controlled Obsidian vault.
@@ -199,8 +211,34 @@ export class GitManager {
 		return this.git.checkIsRepo();
 	}
 
-	async init(): Promise<void> {
+	async init(branch = "main"): Promise<void> {
 		await this.git.init();
+		// git init's default initial branch name depends on the machine's
+		// global init.defaultBranch config — still "master" on plenty of
+		// untouched installs (especially Windows), while Brain Sync assumes
+		// "main" everywhere else. Rewire HEAD to the branch we actually
+		// expect before any commit exists, so the first commit lands on the
+		// right branch regardless of that config. This only works pre-first-
+		// commit, which is exactly when init() runs; deliberately not using
+		// `git init --initial-branch=main` since that flag needs git 2.28+
+		// and symbolic-ref works on any version.
+		await this.git.raw(["symbolic-ref", "HEAD", `refs/heads/${branch}`]);
+	}
+
+	/**
+	 * Sets repo-local (not --global) author identity from the plugin's own
+	 * settings, if provided — a fresh git install has no identity configured
+	 * anywhere and refuses to commit ("Author identity unknown"), which is
+	 * exactly the kind of raw git error Brain is supposed to hide. No-op if
+	 * both fields are empty, so machines that already have a working global
+	 * git identity (the common case) are left untouched. Ensures the repo
+	 * exists first, since local `git config` requires one.
+	 */
+	async ensureIdentity(name: string, email: string, branch = "main"): Promise<void> {
+		if (!name.trim() && !email.trim()) return;
+		if (!(await this.isRepo())) await this.init(branch);
+		if (name.trim()) await this.git.raw(["config", "user.name", name.trim()]);
+		if (email.trim()) await this.git.raw(["config", "user.email", email.trim()]);
 	}
 
 	async setRemote(remoteUrl: string): Promise<void> {
@@ -219,7 +257,7 @@ export class GitManager {
 	 * histories allowed, not a literal clone.
 	 */
 	async connectExisting(creds: RemoteCredentials, branch = "main"): Promise<void> {
-		if (!(await this.isRepo())) await this.init();
+		if (!(await this.isRepo())) await this.init(branch);
 		await this.setRemote(creds.remoteUrl);
 		await this.git.raw([...this.authArgs(creds.token), "fetch", "origin", branch]);
 		await this.git.raw([
@@ -233,7 +271,14 @@ export class GitManager {
 
 	async pull(creds: RemoteCredentials, branch = "main"): Promise<void> {
 		await this.setRemote(creds.remoteUrl);
-		await this.git.raw([...this.authArgs(creds.token), "pull", "origin", branch]);
+		// --no-rebase pins this to merge semantics explicitly (matching
+		// connectExisting()'s own merge-based approach) rather than relying
+		// on the machine's global pull.rebase/pull.ff config. Without it,
+		// git refuses with "Need to specify how to reconcile divergent
+		// branches" the moment local and remote histories diverge — which
+		// commit-before-pull (see main.ts's syncNow()) makes the normal
+		// case, not an edge case.
+		await this.git.raw([...this.authArgs(creds.token), "pull", "--no-rebase", "origin", branch]);
 	}
 
 	async push(creds: RemoteCredentials, branch = "main"): Promise<void> {

@@ -22,6 +22,9 @@ interface BrainSyncSettings {
 	scaffoldingDone: boolean;
 	/** Manual override if auto-detection can't find git (e.g. "spawn git ENOENT"). Empty = auto-detect. */
 	gitBinaryPath: string;
+	/** Sets repo-local git identity so commits work on a fresh git install with no user.name/email configured anywhere. Empty = leave whatever's already configured on the machine alone. */
+	authorName: string;
+	authorEmail: string;
 }
 
 const DEFAULT_SETTINGS: BrainSyncSettings = {
@@ -34,6 +37,8 @@ const DEFAULT_SETTINGS: BrainSyncSettings = {
 	lastSyncedAt: null,
 	scaffoldingDone: false,
 	gitBinaryPath: "",
+	authorName: "",
+	authorEmail: "",
 };
 
 export default class BrainSyncPlugin extends Plugin {
@@ -90,9 +95,22 @@ export default class BrainSyncPlugin extends Plugin {
 		this.status = "syncing";
 		const creds = { remoteUrl: this.settings.remoteUrl, token: this.settings.token };
 		try {
+			await this.gitManager.ensureIdentity(this.settings.authorName, this.settings.authorEmail, this.settings.branch);
+
 			if (!(await this.gitManager.isRepo())) {
+				// First-ever connect: connectExisting()'s own merge
+				// (--allow-unrelated-histories) is what reconciles the
+				// vault's existing content with remote history, so there's
+				// nothing to commit beforehand.
 				await this.gitManager.connectExisting(creds, this.settings.branch);
 			} else {
+				// Commit local changes before pulling, not after. Pulling
+				// first meant any local edit that also changed upstream
+				// aborted the whole sync ("your local changes would be
+				// overwritten by merge") instead of resolving cleanly —
+				// standard practice elsewhere is commit-then-sync for
+				// exactly this reason.
+				await this.gitManager.commitAll("Brain Sync: local changes");
 				await this.gitManager.pull(creds, this.settings.branch);
 			}
 
@@ -118,6 +136,12 @@ export default class BrainSyncPlugin extends Plugin {
 				new Notice(
 					`Brain Sync couldn't run git (tried: "${triedPath}"). If git is installed, set its full path ` +
 						'under Brain Sync settings → "Git binary path" — paste it with no surrounding quotes — then try again.',
+					12000
+				);
+			} else if (message.includes("Author identity unknown") || message.includes("unable to auto-detect email")) {
+				new Notice(
+					'Brain Sync failed: no git author identity set on this machine. Set "Author name" and ' +
+						'"Author email" under Brain Sync settings, then try again.',
 					12000
 				);
 			} else {
@@ -172,6 +196,32 @@ class BrainSyncSettingTab extends PluginSettingTab {
 					this.display();
 				})
 			);
+
+		new Setting(containerEl)
+			.setName("Author name")
+			.setDesc(
+				"Used for commit authorship. Leave blank if git already has a name/email configured on this " +
+					'machine — only needed if syncing fails with "Author identity unknown."'
+			)
+			.addText((text) =>
+				text
+					.setPlaceholder("Your name")
+					.setValue(s.authorName)
+					.onChange(async (value) => {
+						s.authorName = value.trim();
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl).setName("Author email").addText((text) =>
+			text
+				.setPlaceholder("you@knowello.com.au")
+				.setValue(s.authorEmail)
+				.onChange(async (value) => {
+					s.authorEmail = value.trim();
+					await this.plugin.saveSettings();
+				})
+		);
 
 		new Setting(containerEl)
 			.setName("Auto-sync")
