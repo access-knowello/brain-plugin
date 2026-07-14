@@ -93,6 +93,8 @@ Obsidian (like most GUI apps) can launch with a minimal `PATH` that doesn't matc
 
 Common Windows-specific cause: if Git for Windows was installed without the "Git from the command line" PATH option, or if only GitHub Desktop is installed (its bundled git isn't exposed system-wide), `git` won't resolve automatically — the manual path override above is the fix either way.
 
+**Setting "Git binary path" to the correct path still doesn't work (fixed in `0.0.3`):** if you set this to the standard Windows location — `C:\Program Files\Git\cmd\git.exe` — and Sync still fails, that wasn't a mistake in the path. `simple-git` (the library this plugin uses) rejects any custom binary path containing a space by default, and "Program Files" always has one. `gitManager.ts` now passes `unsafe: { allowUnsafeCustomBinary: true }` specifically to allow this — safe here because the path only ever comes from the plugin's own local settings, never a remote/untrusted source. Make sure you're on `0.0.3` or later.
+
 ## Getting a token
 
 Two options, both scoped to just the one tenant repo:

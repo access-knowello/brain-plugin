@@ -114,10 +114,11 @@ export default class BrainSyncPlugin extends Plugin {
 			console.error("Brain Sync error", err);
 			const message = (err as Error).message ?? String(err);
 			if (message.includes("ENOENT") && message.includes("git")) {
+				const { path: triedPath } = this.gitManager.getBinaryStatus();
 				new Notice(
-					"Brain Sync couldn't find git on this system. If git is installed, set its full path " +
-						"under Brain Sync settings → \"Git binary path\", then try again.",
-					10000
+					`Brain Sync couldn't run git (tried: "${triedPath}"). If git is installed, set its full path ` +
+						'under Brain Sync settings → "Git binary path" — paste it with no surrounding quotes — then try again.',
+					12000
 				);
 			} else {
 				new Notice(`Brain Sync failed: ${message}`);
@@ -199,11 +200,15 @@ class BrainSyncSettingTab extends PluginSettingTab {
 			);
 
 		containerEl.createEl("h3", { text: "Troubleshooting" });
+		const gitStatus = this.plugin.gitManager.getBinaryStatus();
+		const gitStatusText = gitStatus.valid
+			? `✓ Currently using "${gitStatus.path}" — confirmed working.`
+			: `✗ Currently trying "${gitStatus.path}" — this did NOT run successfully.`;
 		new Setting(containerEl)
 			.setName("Git binary path")
 			.setDesc(
-				`Leave blank to auto-detect (currently using: ${this.plugin.gitManager.getBinaryPath()}). ` +
-					'Set this if Sync now fails with "couldn\'t find git" — e.g. ' +
+				`${gitStatusText} Leave blank to auto-detect. Set this if Sync now fails with "couldn't find git" — ` +
+					"paste the path with no surrounding quotes, e.g. " +
 					"C:\\Program Files\\Git\\cmd\\git.exe on Windows, or the output of `which git` in Terminal on Mac/Linux."
 			)
 			.addText((text) =>

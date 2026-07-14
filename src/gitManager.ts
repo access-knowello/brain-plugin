@@ -87,15 +87,16 @@ export class GitManager {
 	private git: SimpleGit;
 	private basePath: string;
 	private binaryPath = "git";
+	private binaryValid = false;
 
 	constructor(adapter: FileSystemAdapter) {
 		this.basePath = adapter.getBasePath();
 		this.git = simpleGit({ baseDir: this.basePath });
 	}
 
-	/** Whatever binary path resolveGitBinary() last settled on — for display in settings, not used for git calls. */
-	getBinaryPath(): string {
-		return this.binaryPath;
+	/** What resolveGitBinary() last settled on, and whether it actually ran successfully — for display in settings. */
+	getBinaryStatus(): { path: string; valid: boolean } {
+		return { path: this.binaryPath, valid: this.binaryValid };
 	}
 
 	/**
@@ -109,14 +110,19 @@ export class GitManager {
 	 * the override setting changes.
 	 */
 	async resolveGitBinary(explicitPath?: string): Promise<void> {
-		const trimmed = explicitPath?.trim();
+		// Strip surrounding quotes too — a very common paste mistake (e.g.
+		// copying `"C:\Program Files\Git\cmd\git.exe"` including the quotes
+		// from a command's quoted output) produces a string that looks right
+		// but isn't a real path, and previously would've been trusted as-is.
+		const trimmed = explicitPath?.trim().replace(/^["']|["']$/g, "");
 		if (trimmed) {
-			this.setBinary(trimmed);
+			const works = await this.binaryWorks(trimmed);
+			this.setBinary(trimmed, works);
 			return;
 		}
 
 		if (await this.binaryWorks("git")) {
-			this.setBinary("git");
+			this.setBinary("git", true);
 			return;
 		}
 
@@ -127,26 +133,40 @@ export class GitManager {
 				.catch(() => false);
 			if (!exists) continue;
 			if (await this.binaryWorks(candidate)) {
-				this.setBinary(candidate);
+				this.setBinary(candidate, true);
 				return;
 			}
 		}
 
 		// Nothing worked — leave "git" as the binary so the eventual ENOENT
 		// surfaces normally; the caller (main.ts) turns that into a Notice
-		// pointing at the manual override setting.
-		this.setBinary("git");
+		// that now names the exact path that was tried.
+		this.setBinary("git", false);
 	}
 
-	private setBinary(binary: string): void {
+	private setBinary(binary: string, valid: boolean): void {
 		this.binaryPath = binary;
-		this.git = simpleGit({ baseDir: this.basePath, binary });
+		this.binaryValid = valid;
+		this.git = simpleGit({ baseDir: this.basePath, binary, unsafe: { allowUnsafeCustomBinary: true } });
 	}
 
 	private async binaryWorks(binary: string): Promise<boolean> {
 		try {
-			await simpleGit({ binary }).version();
-			return true;
+			// simple-git's version() doesn't throw for a missing binary — it
+			// swallows the spawn error internally and resolves with
+			// `installed: false` instead. Checking for a thrown exception
+			// here would always report success.
+			//
+			// allowUnsafeCustomBinary is required here too: simple-git's own
+			// custom-binary validation rejects any path containing a space —
+			// which every default Windows git install hits, since
+			// "C:\Program Files\Git\cmd\git.exe" has one. That's not a typo
+			// on the user's part, it's simple-git being conservative about
+			// binary paths by default; the path still comes from the user's
+			// own local settings, not an untrusted remote source, so it's
+			// safe to relax here.
+			const result = await simpleGit({ binary, unsafe: { allowUnsafeCustomBinary: true } }).version();
+			return result.installed;
 		} catch {
 			return false;
 		}
