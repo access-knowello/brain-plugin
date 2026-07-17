@@ -120,6 +120,13 @@ export default class BrainSyncPlugin extends Plugin {
 				await this.saveSettings();
 			}
 
+			// Self-healing: a merge/connect above can reintroduce
+			// per-machine files another (not-yet-updated) machine still has
+			// tracked — .gitignore alone never retroactively untracks an
+			// already-committed path, so this re-applies on every sync
+			// rather than needing a one-off manual fix each time it recurs.
+			await this.gitManager.untrackIgnoredFiles();
+
 			await this.gitManager.commitAll("Brain Sync: local changes");
 			await this.gitManager.push(creds, this.settings.branch);
 

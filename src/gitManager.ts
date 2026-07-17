@@ -12,22 +12,40 @@ export interface RemoteCredentials {
 export type SyncStatus = "idle" | "syncing" | "error";
 
 /**
+ * Per-machine Obsidian/plugin state that should never be shared between
+ * team members — window layout, theme, enabled plugins, and each person's
+ * own git-token-bearing plugin settings file. Single source of truth for
+ * both the scaffolded .gitignore text below and untrackIgnoredFiles() —
+ * gitignore alone isn't enough (it never retroactively untracks a path
+ * that's already committed), so this list also has to be actively
+ * re-applied on every sync. Keep this one list in sync with itself; don't
+ * let the scaffolded .gitignore and untrackIgnoredFiles() drift apart.
+ */
+const NEVER_TRACK_PATHS = [
+	".obsidian/workspace.json",
+	".obsidian/app.json",
+	".obsidian/appearance.json",
+	".obsidian/core-plugins.json",
+	".obsidian/community-plugins.json",
+	".obsidian/graph.json",
+	".obsidian/plugins",
+];
+
+/**
  * Standard vault-root scaffold, mirrored from
  * products/brain/_claude/vault-convention-spec.md in the vault — that doc is
  * the source of truth; update both together if either drifts.
  */
 const SCAFFOLD_FILES: Record<string, string> = {
 	".gitignore": `.DS_Store
-# Per-machine Obsidian config (window layout, theme, enabled core plugins) —
-# every fresh install generates these locally before Brain Sync ever runs;
-# tracking them means every new teammate's first connect hits a merge
-# conflict on files that were never meant to be shared.
-.obsidian/workspace.json
-.obsidian/app.json
-.obsidian/appearance.json
-.obsidian/core-plugins.json
-.obsidian/community-plugins.json
-.obsidian/plugins/
+# Per-machine Obsidian config (window layout, theme, enabled plugins,
+# and each person's own plugin settings) — every fresh install generates
+# these locally before Brain Sync ever runs; tracking them means every
+# new teammate's first connect hits a merge conflict on files that were
+# never meant to be shared. Kept in sync with NEVER_TRACK_PATHS in
+# gitManager.ts, which actively re-untracks these on every sync too —
+# gitignore alone doesn't retroactively untrack an already-committed path.
+${NEVER_TRACK_PATHS.map((p) => (p.endsWith(".json") ? p : `${p}/`)).join("\n")}
 `,
 	"index.md": `# Welcome to your Brain
 
@@ -336,5 +354,26 @@ export class GitManager {
 			created.push(relPath);
 		}
 		return created;
+	}
+
+	/**
+	 * Untracks any of NEVER_TRACK_PATHS that are currently tracked — files
+	 * only stay untracked by .gitignore until something re-tracks them, and
+	 * merging in another machine's history is exactly that: a machine on an
+	 * older plugin version, or one that hasn't synced since a teammate's
+	 * connect attempt predating this fix, can reintroduce these paths on any
+	 * pull. gitignore never retroactively removes an already-tracked path,
+	 * so this has to be actively re-applied — safe to call after every
+	 * sync, not just once. `--ignore-unmatch` makes this a no-op for
+	 * anything not currently tracked, and `--cached` never touches the
+	 * actual files on disk. Returns whatever was actually untracked, if
+	 * anything, so the caller knows whether there's something new to
+	 * commit.
+	 */
+	async untrackIgnoredFiles(): Promise<string[]> {
+		const tracked = await this.git.raw(["ls-files", ...NEVER_TRACK_PATHS]).catch(() => "");
+		if (!tracked.trim()) return [];
+		await this.git.raw(["rm", "--cached", "-r", "--ignore-unmatch", ...NEVER_TRACK_PATHS]);
+		return tracked.trim().split("\n");
 	}
 }
