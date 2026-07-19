@@ -324,7 +324,19 @@ export class GitManager {
 	async commitAll(message: string): Promise<number> {
 		await this.git.add(["-A"]);
 		const status = await this.git.status();
-		if (status.staged.length === 0) return 0;
+		// Mid-merge (a conflict got resolved/staged by the add above, or
+		// had nothing left to stage at all — e.g. a modify/delete resolved
+		// to the same content already there) still needs an actual commit
+		// to conclude the merge, even when nothing is newly staged. Skipping
+		// that here left a real repo stuck with MERGE_HEAD present forever:
+		// every subsequent sync's pull() then refused outright with "you
+		// have not concluded your merge" - a hard git rule, not a bug in
+		// pull() itself - so this must be checked before bailing out early.
+		const midMerge = await this.git
+			.raw(["rev-parse", "-q", "--verify", "MERGE_HEAD"])
+			.then(() => true)
+			.catch(() => false);
+		if (status.staged.length === 0 && !midMerge) return 0;
 		await this.git.commit(message);
 		return status.staged.length;
 	}
