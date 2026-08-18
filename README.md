@@ -2,15 +2,17 @@
 
 Shared, git-backed sync for an organization's Obsidian vault. Not published to the Obsidian community plugin store yet; this covers manual/dev installs only.
 
+**New to Brain?** See `ONBOARDING.md` in the vault's `products/brain/` folder (or `_claude/` at the vault root, mirrored there for easy access) — covers vault conventions, document format, and the companion Skill. This README covers plugin install/troubleshooting only.
+
 ## Current status
 
-No SSO yet — you manually create a GitHub App installation token (or a fine-grained PAT) and paste it into plugin settings.
+SSO is here: click **Connect your organization** in Brain Sync settings, sign in with your organization's Microsoft account, and syncing works with no manual token. Manual token entry (behind "Reveal connection details") still works and isn't going away — it's a fallback, not a deprecated path, useful before your org has SSO set up or for local testing.
 
 ## Requirements
 
 - Desktop Obsidian only (`isDesktopOnly: true` — the plugin shells out to a real `git` binary via `simple-git`, which isn't available on mobile).
 - A local folder to use as your vault, already (or about to be) connected to a `Knowello-Brain/<tenant-repo>` GitHub repo.
-- A GitHub App installation token or fine-grained PAT scoped to that repo (Contents read/write).
+- Either your organization's Microsoft account (for SSO — see below), or a GitHub App installation token/fine-grained PAT scoped to that repo (Contents read/write) for the manual fallback.
 
 ## Install — team rollout via BRAT (recommended)
 
@@ -95,7 +97,13 @@ Common Windows-specific cause: if Git for Windows was installed without the "Git
 
 **Setting "Git binary path" to the correct path still doesn't work (fixed in `0.0.3`):** if you set this to the standard Windows location — `C:\Program Files\Git\cmd\git.exe` — and Sync still fails, that wasn't a mistake in the path. `simple-git` (the library this plugin uses) rejects any custom binary path containing a space by default, and "Program Files" always has one. `gitManager.ts` now passes `unsafe: { allowUnsafeCustomBinary: true }` specifically to allow this — safe here because the path only ever comes from the plugin's own local settings, never a remote/untrusted source. Make sure you're on `0.0.3` or later.
 
-## Getting a token
+## Signing in via SSO (recommended)
+
+Open Brain Sync settings and click **Connect your organization** under "Organization" — this opens `brain-provisioning`'s hosted `/auth/login` in your system browser, you sign in with your organization's Microsoft account, and the browser redirects to `obsidian://brain-sync?session=...`, which Obsidian hands straight back to the plugin. From there the plugin mints and refreshes its own git token automatically (`resolveCredentials()` in `main.ts`) — nothing else to configure. **Sign out** (same settings section) clears the session and any cached token; manual fields underneath, if set, take back over immediately with no extra steps.
+
+This talks to `brain-provisioning`'s real deployment by default (`https://brain.brolli.ai`) — only override "Provisioning service URL" under "For developers" if you're testing against a local instance.
+
+## Getting a token (manual fallback)
 
 Two options, both scoped to just the one tenant repo:
 
@@ -130,6 +138,5 @@ On first connect, this plugin scaffolds a standard vault layout (`index.md`, `_c
 
 ## What this plugin does *not* do (yet)
 
-- No SSO / sign-in — the remote URL and token are entered manually in settings.
 - No conflict-resolution UI — a raw git merge conflict is what you'll see if two people edit the same note offline at the same time.
 - No binary/attachment handling beyond whatever plain git does.
