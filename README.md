@@ -2,7 +2,7 @@
 
 Shared, git-backed sync for an organization's Obsidian vault. Not published to the Obsidian community plugin store yet; this covers manual/dev installs only.
 
-**New to Brain?** See `ONBOARDING.md` in the vault's `products/brain/` folder (or `_claude/` at the vault root, mirrored there for easy access) — covers vault conventions, document format, and the companion Skill. This README covers plugin install/troubleshooting only.
+**New to Brain?** See `ONBOARDING.md` in the vault's `products/brain/` folder (or `_agents/` at the vault root, mirrored there for easy access) — covers vault conventions, document format, and the companion Skill. This README covers plugin install/troubleshooting only.
 
 ## Current status
 
@@ -134,7 +134,7 @@ Dry-run by default (everything up to the local merge) — pass `--push` to actua
 
 ## Companion: the `brain-vault-standard` Claude Code Skill
 
-On first connect, this plugin scaffolds a standard vault layout (`index.md`, `_claude/MEMORY.md`, `_claude/vault-conventions.md`) so any Brain vault is organized the same way. To have Claude Code actually *recognize* that layout and apply the same conventions when writing Project Notes and Code Maps, install the companion Skill at `claude-skill/brain-vault-standard/` — see that folder's own `README.md` for install steps. It's a separate, optional install (not bundled into the Obsidian plugin itself), same lightweight manual-install approach as this plugin uses pre-BRAT.
+On first connect, this plugin scaffolds a standard vault layout (`index.md`, `_agents/MEMORY.md`, `_agents/vault-conventions.md`) so any Brain vault is organized the same way. To have Claude Code actually *recognize* that layout and apply the same conventions when writing Project Notes and Code Maps, install the companion Skill at `claude-skill/brain-vault-standard/` — see that folder's own `README.md` for install steps. It's a separate, optional install (not bundled into the Obsidian plugin itself), same lightweight manual-install approach as this plugin uses pre-BRAT.
 
 ## What this plugin does *not* do (yet)
 

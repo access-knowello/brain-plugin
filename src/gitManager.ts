@@ -33,7 +33,7 @@ const NEVER_TRACK_PATHS = [
 
 /**
  * Standard vault-root scaffold, mirrored from
- * products/brain/_claude/vault-convention-spec.md in the vault — that doc is
+ * products/brain/_agents/vault-convention-spec.md in the vault — that doc is
  * the source of truth; update both together if either drifts.
  */
 const SCAFFOLD_FILES: Record<string, string> = {
@@ -51,12 +51,12 @@ ${NEVER_TRACK_PATHS.map((p) => (p.endsWith(".json") ? p : `${p}/`)).join("\n")}
 
 This vault is synced via **Brain** — your team's shared, version-controlled Obsidian vault.
 
-- \`_claude/MEMORY.md\` — the memory index Claude reads at the start of a session
-- \`_claude/vault-conventions.md\` — how this vault is organized
+- \`_agents/MEMORY.md\` — the memory index Claude reads at the start of a session
+- \`_agents/vault-conventions.md\` — how this vault is organized
 
-Start a new project by creating a folder for it, then giving it its own \`_claude/\` subfolder as it grows (see \`vault-conventions.md\`).
+Start a new project by creating a folder for it, then giving it its own \`_agents/\` subfolder as it grows (see \`vault-conventions.md\`).
 `,
-	"_claude/MEMORY.md": `---
+	"_agents/MEMORY.md": `---
 name: memory-index
 description: Top-level memory index for this Brain vault
 metadata:
@@ -65,11 +65,11 @@ metadata:
 
 # Memory Index
 
-No projects yet. As you add project folders, list them here with a one-line description and a link to that project's own \`_claude/MEMORY.md\`.
+No projects yet. As you add project folders, list them here with a one-line description and a link to that project's own \`_agents/MEMORY.md\`.
 
 - [[vault-conventions]] — how this vault is organized
 `,
-	"_claude/vault-conventions.md": `---
+	"_agents/vault-conventions.md": `---
 name: vault-conventions
 description: How this Brain vault is organized — read this before creating new project structure
 metadata:
@@ -83,14 +83,14 @@ This vault follows a standard layout so Claude (and anyone on the team) can navi
 ## Structure
 
 - \`index.md\` — this vault's landing page
-- \`_claude/MEMORY.md\` — top-level memory index (wikilinks, not file paths)
+- \`_agents/MEMORY.md\` — top-level memory index (wikilinks, not file paths)
 
 Each project living in this vault gets its own subfolder with the same pattern, scaled up:
 
 \`\`\`
 <project>/
   index.md
-  _claude/
+  _agents/
     MEMORY.md
     <project-notes>.md      (e.g. implementation-plan.md, decisions.md)
     code/
@@ -103,7 +103,7 @@ Each project living in this vault gets its own subfolder with the same pattern, 
 - Update the relevant Code Map file in the same session as the code change it documents.
 - Update MEMORY.md (vault-root or project-level) whenever a new note or code map file is added.
 - Use wikilinks (\`[[note-name]]\`) in MEMORY.md, not file paths.
-- Every project's memory file is literally named \`MEMORY.md\`, so from the vault-root index a bare \`[[MEMORY]]\` link is ambiguous across projects. Use a path-qualified wikilink with a display alias instead: \`[[<project>/_claude/MEMORY|<project>]]\`.
+- Every project's memory file is literally named \`MEMORY.md\`, so from the vault-root index a bare \`[[MEMORY]]\` link is ambiguous across projects. Use a path-qualified wikilink with a display alias instead: \`[[<project>/_agents/MEMORY|<project>]]\`.
 `,
 };
 
@@ -346,8 +346,8 @@ export class GitManager {
 	}
 
 	/**
-	 * Writes the standard vault-root scaffold (index.md, _claude/MEMORY.md,
-	 * _claude/vault-conventions.md). Idempotent — only creates files that
+	 * Writes the standard vault-root scaffold (index.md, _agents/MEMORY.md,
+	 * _agents/vault-conventions.md). Idempotent — only creates files that
 	 * don't already exist — so it's safe to call on every first-connect
 	 * without clobbering a vault that already has its own content there.
 	 * Returns the list of files actually created.

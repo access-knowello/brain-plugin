@@ -2,7 +2,7 @@
 
 Teaches Claude Code the Brain vault convention: how to recognize a Brain-synced vault, the standard directory/document layout, and how to write Project Notes and Code Maps in a consistent format. Complements the Brain Sync Obsidian plugin (`../../`), which scaffolds the vault-root files this skill recognizes on first connect.
 
-Full convention this skill implements: `skills/brain-vault-standard/SKILL.md`. Design rationale (why this exists, what's scaffolded vs. what the skill teaches ad hoc): `products/brain/_claude/vault-convention-spec.md` in the Brain product vault (Knowello-internal, not needed to use the skill).
+Full convention this skill implements: `skills/brain-vault-standard/SKILL.md`. Design rationale (why this exists, what's scaffolded vs. what the skill teaches ad hoc): `products/brain/_agents/vault-convention-spec.md` in the Brain product vault (Knowello-internal, not needed to use the skill).
 
 No marketplace listing yet — install manually, same as the plugin pre-BRAT. Revisit once Brain has external (non-Knowello) users.
 
@@ -30,9 +30,9 @@ No marketplace listing yet — install manually, same as the plugin pre-BRAT. Re
 
 ## Usage
 
-Once enabled, Claude applies this skill automatically whenever it's working inside a vault that has a root `_claude/MEMORY.md` and `_claude/vault-conventions.md` (the plugin scaffolds both on first connect) — no need to invoke it by name.
+Once enabled, Claude applies this skill automatically whenever it's working inside a vault that has a root `_agents/MEMORY.md` and `_agents/vault-conventions.md` (the plugin scaffolds both on first connect) — no need to invoke it by name.
 
 Two things worth knowing explicitly:
 
-- **Starting a new project inside the vault:** just start working — Claude will recognize the vault and offer to scaffold that project's own `index.md` / `_claude/MEMORY.md` / `_claude/code/index.md` once there's real code to map.
+- **Starting a new project inside the vault:** just start working — Claude will recognize the vault and offer to scaffold that project's own `index.md` / `_agents/MEMORY.md` / `_agents/code/index.md` once there's real code to map.
 - **Registering the vault in your global CLAUDE.md:** this is the one action the skill never takes automatically. Ask explicitly — "register this vault" or "make Claude recognize my Brain vault" — and Claude will show you the exact diff to `~/.claude/CLAUDE.md` before writing it.
