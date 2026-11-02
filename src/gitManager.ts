@@ -1,5 +1,5 @@
 import type { FileSystemAdapter } from "obsidian";
-import simpleGit, { type SimpleGit } from "simple-git";
+import { simpleGit, type SimpleGit } from "simple-git";
 import { promises as fs } from "fs";
 import * as path from "path";
 
